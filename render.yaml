@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: smarttech-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: SUPABASE_URL
+        value: https://psbapehdbxwxskqqbcyf.supabase.co
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: GST_API_KEY
+        value: 2affe96992f9643bcd2b4abd1d1e2a10
+      - key: EMAIL_HOST
+        value: smtp.hostinger.com
+      - key: EMAIL_PORT
+        value: 587
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
