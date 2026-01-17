@@ -19,7 +19,7 @@ dotenv.config();
 const log = (level, message, ...args) => {
   const logLevel = process.env.LOG_LEVEL || 'info';
   const levels = { debug: 0, info: 1, warn: 2, error: 3 };
-  
+
   if (levels[level] >= levels[logLevel]) {
     const timestamp = new Date().toISOString();
     const prefix = `[${NODE_ENV.toUpperCase()}]`;
@@ -49,7 +49,7 @@ app.use((req, res, next) => {
 const getAllowedOrigins = () => {
   const baseOrigins = [
     'http://localhost:3000',
-    'http://localhost:3001', 
+    'http://localhost:3001',
     'http://localhost:5001',
     'http://localhost:5002',
     'http://localhost:5003'
@@ -61,7 +61,7 @@ const getAllowedOrigins = () => {
   ];
 
   // Add custom origins from environment variable
-  const customOrigins = process.env.ALLOWED_ORIGINS 
+  const customOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
     : [];
 
@@ -80,8 +80,12 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' })); // Increase payload limit for PDF attachments
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Serve static files from React build
-app.use(express.static(path.join(__dirname, '../build')));
+// Serve static files from React build (only if it exists)
+import fs from 'fs';
+const buildPath = path.join(__dirname, '../build');
+if (fs.existsSync(buildPath)) {
+  app.use(express.static(buildPath));
+}
 
 // API Routes
 app.post('/api/send-email', sendEmail);
@@ -126,7 +130,7 @@ app.get('/api/health', async (req, res) => {
         const { createClient } = await import('@supabase/supabase-js');
         const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
         const { data, error } = await supabase.from('quotation_counters').select('count').limit(1);
-        
+
         healthData.supabase = {
           connected: !error,
           message: error ? error.message : 'Connection successful'
@@ -139,10 +143,10 @@ app.get('/api/health', async (req, res) => {
       }
     }
 
-    log('info', 'Health check requested', { 
-      ip: req.ip, 
+    log('info', 'Health check requested', {
+      ip: req.ip,
       userAgent: req.get('User-Agent'),
-      environment: NODE_ENV 
+      environment: NODE_ENV
     });
 
     res.json(healthData);
@@ -160,13 +164,13 @@ app.get('/api/health', async (req, res) => {
 app.get('/api/test-supabase', async (req, res) => {
   try {
     const { supabase } = await import('./config/supabase.js');
-    
+
     // Try a simple query to test connection
     const { data, error } = await supabase
       .from('quotation_counters')
       .select('count(*)')
       .limit(1);
-    
+
     if (error) {
       return res.status(400).json({
         success: false,
@@ -174,7 +178,7 @@ app.get('/api/test-supabase', async (req, res) => {
         details: error
       });
     }
-    
+
     res.json({
       success: true,
       message: 'Supabase connection working',
@@ -193,26 +197,26 @@ app.get('/api/test-supabase', async (req, res) => {
 app.post('/api/test-quotation', async (req, res) => {
   try {
     const { supabase } = await import('./config/supabase.js');
-    
+
     // Test data
     const testQuotation = {
       type: 'CUST',
       customer_name: 'Test Customer',
       customer_email: 'test@example.com',
-      items: JSON.stringify([{name: 'Test Item', price: 100}]),
+      items: JSON.stringify([{ name: 'Test Item', price: 100 }]),
       items_count: 1,
       subtotal: 100,
       total_tax_amount: 18,
       total_amount: 118,
       status: 'DRAFT'
     };
-    
+
     const { data, error } = await supabase
       .from('quotations')
       .insert([testQuotation])
       .select('*')
       .single();
-    
+
     if (error) {
       return res.status(400).json({
         success: false,
@@ -220,7 +224,7 @@ app.post('/api/test-quotation', async (req, res) => {
         details: error
       });
     }
-    
+
     res.json({
       success: true,
       message: 'Test quotation created successfully',
@@ -235,9 +239,18 @@ app.post('/api/test-quotation', async (req, res) => {
   }
 });
 
-// Serve React app for all other routes
+// Serve React app for all other routes or provide backend status
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../build', 'index.html'));
+  const indexPath = path.join(__dirname, '../build', 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.json({
+      message: 'Smart Technologies Backend API is running',
+      api_health: '/api/health',
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Start server
